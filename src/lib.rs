@@ -21,7 +21,7 @@
 #![no_std]
 #![deny(missing_docs, missing_debug_implementations)]
 
-use core::iter::once;
+use core::{iter::once, str::CharIndices};
 
 /// The [Unicode version](https://www.unicode.org/versions/) conformed to.
 pub const UNICODE_VERSION: (u8, u8, u8) = (15, 0, 0);
@@ -145,6 +145,71 @@ pub fn split_at_safe(s: &str) -> (&str, &str) {
     chars.find(|&(_, is_safe_pair)| is_safe_pair);
     // Include preceding char for `linebreaks` to pick up break before match (disallowed after sot)
     s.split_at(chars.next().map_or(0, |(i, _)| i))
+}
+
+
+/// An re-feedable iterator for linebreak opportunities
+#[derive(Debug)]
+pub struct LineBreakOpportunityIter<'s> {
+    state                    : u8,
+    zero_width_joiner_before : bool,
+    char_indices             : CharIndices<'s>,
+    index_offset             : usize,
+    index_current_string     : usize,
+}
+
+impl<'s> LineBreakOpportunityIter<'s> {
+    /// Creates a new iterator from a string slice
+    pub fn new(text : &'s str) -> Self { 
+        Self { 
+            state : sot, 
+            zero_width_joiner_before : false, 
+            char_indices : text.char_indices(),
+            index_offset:          0,
+            index_current_string:  0,
+        } 
+    }
+
+    /// Feeds another string slice to the algorithm
+    /// This replaces any string that the struct may have been holding before
+    pub fn feed(&mut self, new_text : &'s str) {
+        self.index_offset += self.index_current_string;
+        self.index_current_string = 0;
+        self.char_indices = new_text.char_indices();
+    }
+}
+
+impl<'s> Iterator for &mut LineBreakOpportunityIter<'s> {
+    type Item = (usize, BreakOpportunity);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use BreakOpportunity::{Allowed, Mandatory};
+
+        let LineBreakOpportunityIter { state, zero_width_joiner_before, char_indices, index_offset, index_current_string, } = self;
+
+        while let Some((i, c)) = char_indices.next() {
+
+            let break_class = break_property(c as u32) as u8;
+
+            let val = PAIR_TABLE[usize::from(*state)][break_class as usize];
+
+            let is_mandatory = val & MANDATORY_BREAK_BIT != 0;
+            let is_break = val & ALLOWED_BREAK_BIT != 0 && (!*zero_width_joiner_before || is_mandatory);
+
+            *index_current_string += c.len_utf8();
+            *state = val & !(ALLOWED_BREAK_BIT | MANDATORY_BREAK_BIT);
+            *zero_width_joiner_before = break_class == BreakClass::ZeroWidthJoiner as u8;
+
+            if is_break {
+                return Some((
+                    *index_offset + i, 
+                    if is_mandatory { Mandatory } else { Allowed }
+                ));
+            }
+        }
+
+        None 
+    }
 }
 
 #[cfg(test)]

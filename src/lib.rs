@@ -150,7 +150,7 @@ pub fn split_at_safe(s: &str) -> (&str, &str) {
 
 /// An re-feedable iterator for linebreak opportunities
 #[derive(Debug)]
-pub struct LineBreakOpportunityIter<'s> {
+pub struct LineBreaker<'s> {
     state                    : u8,
     zero_width_joiner_before : bool,
     char_indices             : CharIndices<'s>,
@@ -158,7 +158,7 @@ pub struct LineBreakOpportunityIter<'s> {
     index_current_string     : usize,
 }
 
-impl<'s> LineBreakOpportunityIter<'s> {
+impl<'s> LineBreaker<'s> {
     /// Creates a new iterator from a string slice
     pub fn new(text : &'s str) -> Self { 
         Self { 
@@ -177,15 +177,25 @@ impl<'s> LineBreakOpportunityIter<'s> {
         self.index_current_string = 0;
         self.char_indices = new_text.char_indices();
     }
+
+    /// Creates an iterator that consumes the string currently passed to 'self'
+    pub fn iter<'lb>(&'lb mut self) -> BreakOpportunityIter<'lb, 's> {
+        BreakOpportunityIter(self)
+    }
 }
 
-impl<'s> Iterator for &mut LineBreakOpportunityIter<'s> {
+/// An iterator over BreakOpportunity's ; it is created by calling the ".iter()" method on a LineBreaker
+#[derive(Debug)]
+pub struct BreakOpportunityIter<'lb, 's>(&'lb mut LineBreaker<'s>);
+
+
+impl<'lb, 's> Iterator for BreakOpportunityIter<'lb, 's> {
     type Item = (usize, BreakOpportunity);
 
     fn next(&mut self) -> Option<Self::Item> {
         use BreakOpportunity::{Allowed, Mandatory};
 
-        let LineBreakOpportunityIter { state, zero_width_joiner_before, char_indices, index_offset, index_current_string, } = self;
+        let Self(LineBreaker { state, zero_width_joiner_before, char_indices, index_offset, index_current_string, }) = self;
 
         while let Some((i, c)) = char_indices.next() {
 

@@ -43,8 +43,8 @@ fn test_lb_iter() -> io::Result<()> {
             None => continue,
         };
 
-        let mut break_iter = LineBreakOpportunityIter::new(&string);
-        let actual: Vec<_> = break_iter.map(|(i, _)| i).collect();
+        let mut line_breaker = LineBreaker::new(&string);
+        let actual: Vec<_> = line_breaker.iter().map(|(i, _)| i).collect();
         let mut expected: Vec<_> = spots
             .into_iter()
             .filter_map(|(i, is_break)| if is_break { Some(i) } else { None })
@@ -71,13 +71,13 @@ fn test_lb_iter_multi_feed() -> io::Result<()> {
         let (string1, string2) = string.split_at(char_indices[char_indices.len() >> 1]);
 
         // feed both chunks to iterator
-        let mut break_iter = LineBreakOpportunityIter::new(string1);
+        let mut line_breaker = LineBreaker::new(string1);
         let mut actual = Vec::new();
-        for (i, _) in &mut break_iter {
+        for (i, _) in line_breaker.iter() {
             actual.push(i);
         }
-        break_iter.feed(string2);
-        for (i, _) in &mut break_iter {
+        line_breaker.feed(string2);
+        for (i, _) in line_breaker.iter() {
             actual.push(i);
         }
 

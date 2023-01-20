@@ -149,7 +149,7 @@ pub fn split_at_safe(s: &str) -> (&str, &str) {
 
 
 /// An re-feedable iterator for linebreak opportunities
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LineBreaker {
     state                    : u8,
     zero_width_joiner_before : bool,

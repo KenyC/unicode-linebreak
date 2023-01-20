@@ -76,8 +76,9 @@ fn test_lb_iter_multi_feed() -> io::Result<()> {
         for (i, _) in line_breaker.feed(string1) {
             actual.push(i);
         }
+        let len_string1 = string1.len();
         for (i, _) in line_breaker.feed(string2) {
-            actual.push(i);
+            actual.push(len_string1 + i);
         }
 
 

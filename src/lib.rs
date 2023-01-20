@@ -220,7 +220,7 @@ impl<'lb, 's> Iterator for BreakOpportunityIter<'lb, 's> {
 
             if is_break {
                 return Some((
-                    *index_offset + i, 
+                    i, 
                     if is_mandatory { Mandatory } else { Allowed }
                 ));
             }
